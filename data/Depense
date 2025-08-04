@@ -1,0 +1,19 @@
+const depenses = [
+  
+  {
+    name :"Judith",
+    montant: "500",
+    description:  "Paiement du mois juin",
+
+   
+  },
+   {
+  name :"Loriane",
+   montant: "400",
+    description:  "Paiement du mois juin",
+  },
+ 
+ 
+];
+
+export default depenses;
