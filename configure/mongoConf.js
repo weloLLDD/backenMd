@@ -5,10 +5,12 @@ const connectDatabase = async() =>{
         const connect = await mongoose.connect(process.env.MONGO_URL);
         console.log("Mongo Connected");
     } catch (error) {
-        console.log(`Error : ${error.Message}`)
-        process.exit(1);
-    }
+    console.log("Erreur connexion MongoDB :", error.message);
+    process.exit(1);
+}
+       
 };
  
 
 export default connectDatabase;
+
