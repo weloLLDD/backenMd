@@ -2,6 +2,8 @@ import express from "express";
 import asyncHandler from "express-async-handler"; 
 import { admin, protect } from "../middleware/AuthMiddleware.js"; 
 import Order from "../models/orderModels.js";
+import PDFDocument from "pdfkit";
+import moment from "moment";
 
 const orderRouter = express.Router();
 
@@ -124,6 +126,65 @@ orderRouter.put(
       res.status(404);
       throw new Error("Order not Found");
     }
+  })
+);
+
+
+
+// ✅ ADMIN EXPORT PDF PAR MOIS
+orderRouter.get(
+  "/report/:month", // ex: 2025-07
+  protect,
+  admin,
+  asyncHandler(async (req, res) => {
+    const { month } = req.params;
+
+    const startDate = new Date(`${month}-01`);
+    const endDate = new Date(`${month}-31`);
+
+    const orders = await Order.find({
+      createdAt: { $gte: startDate, $lte: endDate }
+    })
+      .populate("user", "name email")
+      .sort({ createdAt: 1 })
+      .lean();
+
+    // Génération PDF
+    const doc = new PDFDocument({ margin: 30, size: "A4" });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=rapport_ventes_${month}.pdf`
+    );
+    doc.pipe(res);
+
+    // --- HEADER ---
+    doc.fontSize(18).text("Mudilux Boutique", { align: "center" });
+    doc.moveDown();
+    doc.fontSize(12).text(`Rapport des ventes pour ${month}`, { align: "center" });
+    doc.moveDown(2);
+
+    // --- LISTE DES COMMANDES ---
+    orders.forEach((order, i) => {
+      const date = moment(order.createdAt).format("DD/MM/YYYY HH:mm");
+      doc.fontSize(10).text(`${i + 1}. Date: ${date}`);
+      doc.text(`   Client: ${order.user?.name || "N/A"} (${order.user?.email || ""})`);
+      doc.text(`   Adresse: ${order.shippingAdress?.adress || "N/A"}`);
+
+      order.orderItems?.forEach(item => {
+        doc.text(`      - ${item.name} (${item.qty}) : $${item.price}`);
+      });
+
+      doc.text(`   Total: $${order.totalPrice}`);
+      doc.moveDown(0.5);
+    });
+
+    // --- TOTAL GLOBAL ---
+    const totalGeneral = orders.reduce((sum, o) => sum + o.totalPrice, 0);
+    doc.moveDown();
+    doc.fontSize(12).text(`TOTAL DES VENTES : $${totalGeneral.toLocaleString()}`, { align: "right" });
+
+    doc.end();
   })
 );
 
