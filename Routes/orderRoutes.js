@@ -188,6 +188,73 @@ orderRouter.get(
   })
 );
 
+  // Regroupement produits
+orderRouter.get(
+  "/report-by-product/:month",
+  protect,
+  admin,
+  asyncHandler(async (req, res) => {
+    const { month } = req.params;
+    const startDate = moment(month, "YYYY-MM").startOf("month").toDate();
+    const endDate = moment(month, "YYYY-MM").endOf("month").toDate();
+
+    const orders = await Order.find({
+      createdAt: { $gte: startDate, $lte: endDate }
+    }).lean();
+
+    // Regroupement produits
+    const productMap = {};
+    orders.forEach(order => {
+      order.orderItems.forEach(item => {
+        if (!productMap[item.name]) {
+          productMap[item.name] = { name: item.name, qty: 0, revenue: 0 };
+        }
+        productMap[item.name].qty += item.qty;
+        productMap[item.name].revenue += item.qty * item.price;
+      });
+    });
+
+    const report = Object.values(productMap);
+    const totalGeneral = report.reduce((sum, p) => sum + p.revenue, 0);
+
+    // Génération PDF
+    const doc = new PDFDocument({ margin: 30 });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=rapport_produits_${month}.pdf`
+    );
+    doc.pipe(res);
+
+    doc.fontSize(18).text("Mudilux Boutique", { align: "center" });
+    doc.moveDown();
+    doc.fontSize(12).text(`Rapport des ventes par produit pour ${month}`, { align: "center" });
+    doc.moveDown(2);
+
+    // Table header
+    doc.font("Helvetica-Bold");
+    doc.text("Produit", { continued: true, width: 200 })
+       .text("Quantité totale", { continued: true, width: 100 })
+       .text("Chiffre d'affaires ($)");
+    doc.font("Helvetica");
+    doc.moveDown();
+
+    // Table rows
+    report.forEach(item => {
+      doc.text(item.name, { continued: true, width: 200 })
+         .text(item.qty.toString(), { continued: true, width: 100 })
+         .text(item.revenue.toLocaleString());
+    });
+
+    doc.moveDown();
+    doc.font("Helvetica-Bold").fontSize(14)
+       .text(`Total Général : ${totalGeneral.toLocaleString()} $`, { align: "right" });
+
+    doc.end();
+  })
+);
+
+
 
 
 
