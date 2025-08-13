@@ -187,11 +187,7 @@ orderRouter.get(
     doc.end();
   })
 );
-
  
- 
-
-// GET /api/orders/reportGroup?month=YYYY-MM&category=xxx&userId=xxx
 router.get(
   "/reportGroup",
   asyncHandler(async (req, res) => {
