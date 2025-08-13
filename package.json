@@ -1,6 +1,5 @@
 {
-  "name": "server",
-  "proxy": "httpp://localhost:5000/",
+  "name": "server", 
   "description": "",
   "type": "module",
   "main": "server.js",
