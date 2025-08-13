@@ -188,77 +188,58 @@ orderRouter.get(
   })
 );
 
-  // Regroupement produits
-orderRouter.get(
-  "/report-by-product/:month",
-  protect,
-  admin,
+ 
+ 
+
+// GET /api/orders/reportGroup?month=YYYY-MM&category=xxx&userId=xxx
+router.get(
+  "/reportGroup",
   asyncHandler(async (req, res) => {
-    const { month } = req.params;
-    const startDate = moment(month, "YYYY-MM").startOf("month").toDate();
-    const endDate = moment(month, "YYYY-MM").endOf("month").toDate();
+    const { month, category, userId } = req.query;
 
-    const orders = await Order.find({
-      createdAt: { $gte: startDate, $lte: endDate }
-    }).lean();
+    if (!month) {
+      res.status(400);
+      throw new Error("Le mois est requis");
+    }
 
-    // Regroupement produits
-    const productMap = {};
-    orders.forEach(order => {
-      order.orderItems.forEach(item => {
-        if (!productMap[item.name]) {
-          productMap[item.name] = { name: item.name, qty: 0, revenue: 0 };
-        }
-        productMap[item.name].qty += item.qty;
-        productMap[item.name].revenue += item.qty * item.price;
-      });
-    });
+    const start = new Date(`${month}-01T00:00:00.000Z`);
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + 1);
 
-    const report = Object.values(productMap);
-    const totalGeneral = report.reduce((sum, p) => sum + p.revenue, 0);
+    // Construire le filtre dynamique
+    const matchFilter = {
+      createdAt: { $gte: start, $lt: end },
+    };
+    if (category) matchFilter.category = category;
+    if (userId) matchFilter.userId = mongoose.Types.ObjectId(userId);
 
-    // Génération PDF
-    const doc = new PDFDocument({ margin: 30 });
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=rapport_produits_${month}.pdf`
-    );
-    doc.pipe(res);
+    // Agrégation
+    const report = await Order.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: "$product",
+          totalQty: { $sum: "$quantity" },
+          totalRevenue: { $sum: { $multiply: ["$quantity", "$price"] } },
+          totalOrders: { $sum: 1 },
+        },
+      },
+      { $sort: { totalRevenue: -1 } },
+      {
+        $project: {
+          _id: 0,
+          name: "$_id",
+          totalQty: 1,
+          totalRevenue: 1,
+          totalOrders: 1,
+        },
+      },
+    ]);
 
-    doc.fontSize(18).text("Mudilux Boutique", { align: "center" });
-    doc.moveDown();
-    doc.fontSize(12).text(`Rapport des ventes par produit pour ${month}`, { align: "center" });
-    doc.moveDown(2);
+    const totalRevenue = report.reduce((sum, item) => sum + item.totalRevenue, 0);
 
-    // Table header
-    doc.font("Helvetica-Bold");
-    doc.text("Produit", { continued: true, width: 200 })
-       .text("Quantité totale", { continued: true, width: 100 })
-       .text("Chiffre d'affaires ($)");
-    doc.font("Helvetica");
-    doc.moveDown();
-
-    // Table rows
-    report.forEach(item => {
-      doc.text(item.name, { continued: true, width: 200 })
-         .text(item.qty.toString(), { continued: true, width: 100 })
-         .text(item.revenue.toLocaleString());
-    });
-
-    doc.moveDown();
-    doc.font("Helvetica-Bold").fontSize(14)
-       .text(`Total Général : ${totalGeneral.toLocaleString()} $`, { align: "right" });
-
-    doc.end();
+    res.json({ products: report, totalRevenue });
   })
 );
-
-
-
-
-
-
-
-
+ 
 export default orderRouter;
