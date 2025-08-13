@@ -12,36 +12,48 @@ import cors from "cors";
 import depenseRoute from "./Routes/depenseRoutes.js"; 
 import archiveRoutes from "./Routes/archiveRoutes.js";
 
+
+ 
 dotenv.config();
-const app = express();
+connectDatabase();
+const app = express(); 
 app.use(express.json());
 app.use(cors());
 
-app.use("/api/import", ImportData);
-app.use("/api/products", productRoute); 
-app.use("/api/users", userRouter);
-app.use("/api/orders", orderRouter);
-app.use("/api/ordersV", orderRouterV);
-app.use("/api/orderss", orderRouters);
-app.use("/api/depense", depenseRoute);
+ 
+app.use("/api/import/",ImportData);
+app.use("/api/products/",productRoute); 
+app.use("/api/users",userRouter);
+app.use("/api/orders",orderRouter);
+app.use("/api/ordersV",orderRouterV);
+app.use("/api/orderss",orderRouters);
+app.use("/api/depense",depenseRoute);
+
+
+app.get("/api/config/paypal",(req, res)=>{
+    res.send(process.env.PAYPAL_CLIENT_ID);
+});
+
 app.use("/api/archives", archiveRoutes);
 
-app.get("/api/config/paypal", (req, res) => {
-  res.send(process.env.PAYPAL_CLIENT_ID || "");
-});
 
-app.get("/", (req, res) => {
-  res.send("API is running ✅");
-});
+
 
 app.use(notFound);
 app.use(errorHandler);
 
+
+app.get("/",(req,res) =>{
+    res.send("API Is Running");
+});
+
 const PORT = process.env.PORT || 8080;
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-  connectDatabase()
-    .then(() => console.log("✅ MongoDB connected"))
-    .catch(err => console.error("❌ MongoDB connection error:", err));
-});
+
+
+app.listen(PORT, console.log(`server run in port ${PORT}`));
+console.log("server en marche");
+
+ 
+
+
