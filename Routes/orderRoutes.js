@@ -188,7 +188,7 @@ orderRouter.get(
   })
 );
  
-router.get(
+orderRouter.get(
   "/reportGroup",
   asyncHandler(async (req, res) => {
     const { month, category, userId } = req.query;
@@ -237,5 +237,22 @@ router.get(
     res.json({ products: report, totalRevenue });
   })
 );
+ 
+
+// DELETE /api/orders/all
+orderRouter.delete(
+  "/allss",
+  protect,
+  admin,
+  asyncHandler(async (req, res) => {
+    try {
+      const result = await Order.deleteMany({});
+      res.json({ message: `${result.deletedCount} commandes supprimées (toute la collection Orders)` });
+    } catch (error) {
+      res.status(500).json({ message: "Erreur lors de la suppression", error });
+    }
+  })
+);
+
  
 export default orderRouter;

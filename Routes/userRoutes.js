@@ -7,24 +7,29 @@ import { protect, admin } from "../middleware/AuthMiddleware.js";
 const userRouter = express.Router();
 
 // LOGIN
-userRouter.post("/login", asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
+ // ✅ LOGIN avec name
+userRouter.post(
+  "/login",
+  asyncHandler(async (req, res) => {
+    const { name, password } = req.body; // 👈 remplacer email par name
+    const user = await User.findOne({ name }); // 👈 recherche par name
 
     if (user && (await user.matchPassword(password))) {
-        res.json({
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            isAdmin: user.isAdmin,
-            role: user.role, // 👈
-            token: generateToken(user._id),
-            createdAt: user.createdAt,
-        });
+      res.json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isAdmin: user.isAdmin,
+        role: user.role,
+        token: generateToken(user._id),
+        createdAt: user.createdAt,
+      });
     } else {
-        res.status(401).json("Invalid email or Password");
+      res.status(401).json("Invalid name or Password");
     }
-}));
+  })
+);
+
 
 // REGISTER
 userRouter.post("/", asyncHandler(async (req, res) => {
